@@ -10,7 +10,7 @@
   "scripts": {
     "test": "cucumber-js -p default --exit",
     "test:dev": "cucumber-js -p default --tags '@dev' --exit",
-    "test:wip": "cucumber-js -p default --tags 'not @wip' --exit"
+    "test:wip": "cucumber-js -p default --tags '@wip' --exit"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^10.8.0",
@@ -24,5 +24,8 @@
     "rimraf": "^5.0.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
   }
 }

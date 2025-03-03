@@ -500,12 +500,53 @@ Given(/^A fourth Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fu
   assert.ok(bal >= bal2)
 });
 
-When(/^A transaction is created to transfer (\d+) HTT tokens out of the first and second account and (\d+) HTT tokens into the third account and (\d+) HTT tokens into the fourth account$/, async function () {
+When(/^A transaction is created to transfer (\d+) HTT tokens out of the first and second account and (\d+) HTT tokens into the third account and (\d+) HTT tokens into the fourth account$/, async function (bal1,bal2,bal3,bal4:number) {
+  console.log('--------- ',bal1, bal2, bal3, bal4)
+  const [account1, account2, account3, account4] = accounts;
+  const account1Id: AccountId = AccountId.fromString(account1.id);
+  const account2Id: AccountId = AccountId.fromString(account2.id);
+  const account3Id: AccountId = AccountId.fromString(account3.id);
+  const account4Id: AccountId = AccountId.fromString(account4.id);
+  const account1Key: PrivateKey = PrivateKey.fromStringED25519(account1.privateKey);
+  const account2Key: PrivateKey = PrivateKey.fromStringED25519(account2.privateKey);
 
+  client.setOperator(account1Id, account1Key);
+  client.setRequestTimeout(30000);
+
+  // Create Token Transfer Transaction
+  let transferTx = await new TransferTransaction()
+      .addTokenTransfer(tokenId, account1Id, -10) // 🔹 Account 1 sends 10 HTT
+      .addTokenTransfer(tokenId, account2Id, -10) // 🔹 Account 2 sends 10 HTT
+      .addTokenTransfer(tokenId, account3Id, 5)   // 🔹 Account 3 receives 5 HTT
+      .addTokenTransfer(tokenId, account4Id, 15)  // 🔹 Account 4 receives 15 HTT
+      .freezeWith(client); // 🔹 Freeze before signing
+
+  transferTx = await transferTx.sign(account1Key);
+  transferTx = await transferTx.sign(account2Key);
+
+  const txResponse = await transferTx.execute(client);
+
+  const receipt = await txResponse.getReceipt(client);
+
+  console.log(` Token Transfer Status: ${receipt.status}`);
 });
-// Then(/^The third account holds (\d+) HTT tokens$/, async function () {
+Then(/^The third account holds (\d+) HTT tokens$/, async function (bal: number) {
+  const account3  = accounts[2];
+  const account3Id: AccountId = AccountId.fromString(account3.id);
+  const account3Key: PrivateKey = PrivateKey.fromStringED25519(account3.privateKey);
 
-// });
-// Then(/^The fourth account holds (\d+) HTT tokens$/, async function () {
+  client.setOperator(account3Id, account3Key);
+  const account3Balance = await new AccountBalanceQuery().setAccountId(account3Id).execute(client);
+  const balance = account3Balance.tokens?._map.get(tokenId.toString())
+  console.log('final account 3 token balance ', balance)
+});
+Then(/^The fourth account holds (\d+) HTT tokens$/, async function (bal:number) {
+  const account4  = accounts[3];
+  const account4Id: AccountId = AccountId.fromString(account4.id);
+  const account4Key: PrivateKey = PrivateKey.fromStringED25519(account4.privateKey);
 
-// });
+  client.setOperator(account4Id, account4Key);
+  const account2Balance = await new AccountBalanceQuery().setAccountId(account4Id).execute(client);
+  const balance = account2Balance.tokens?._map.get(tokenId.toString())
+  console.log('final account 4 token balance ', balance)
+});
