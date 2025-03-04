@@ -13,8 +13,6 @@ import { AccountBalanceQuery, AccountId, Client, PrivateKey,
 import assert from "node:assert";
 
 import * as dotenv from "dotenv";
-import { error } from "node:console";
-import { privateEncrypt } from "node:crypto";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -52,11 +50,11 @@ When(/^I create a token named Test Token \(HTT\)$/, async function () {
   .setSupplyType(TokenSupplyType.Infinite)
   .setSupplyKey(treasuryKey) // giving miniting control to tresauryKey
   .freezeWith(client);
-  let tokenCreateSign = await tokenCreateTx.sign(treasuryKey);
-  let tokenCreateSubmit = await tokenCreateSign.execute(client);
-  let tokenCreateRx = await tokenCreateSubmit.getReceipt(client);
-  let tokenId = tokenCreateRx.tokenId;
-  this.tokenId = "0.0.5631212"  //tokenId
+  const tokenCreateSign = await tokenCreateTx.sign(treasuryKey);
+  const tokenCreateSubmit = await tokenCreateSign.execute(client);
+  const tokenCreateRx = await tokenCreateSubmit.getReceipt(client);
+  const tokenId = tokenCreateRx.tokenId;
+  this.tokenId = tokenId?.toString()  //tokenId
   console.log(`- Created token with ID: ${this.tokenId} \n`);
 });
 
@@ -66,11 +64,6 @@ Then(/^The token has the name "([^"]*)"$/, async function (tokenName) {
       .setTokenId(tokenId)
       .execute(client)
       assert.strictEqual(tokenName, tokenInfo.name)
-      console.log("🔹 Token Name:", tokenInfo.name);
-      console.log("🔹 Token Symbol:", tokenInfo.symbol);
-      console.log("🔹 Token Total Supply:", tokenInfo.totalSupply.toString());
-      console.log("🔹 Token Decimals:", tokenInfo.decimals);
-      console.log("🔹 Freeze Status:", tokenInfo.freezeKey ? "Yes" : "No");
 });
 
 Then(/^The token has the symbol "([^"]*)"$/, async function (tokenSymbol) {
@@ -103,22 +96,17 @@ Then(/^The token is owned by the account$/, async function () {
 
 Then(/^An attempt to mint (\d+) additional tokens succeeds$/, async function (additionalSupply) {
   console.log(`Minting ${additionalSupply} tokens for ${this.tokenId}...`);
-  // const supplyKey = PrivateKey.fromString(process.env.MY_PRIVATE_KEY!);
-  // const mintTx = new TokenMintTransaction()
-  //     .setTokenId(this.tokenId)
-  //     .setAmount(additionalSupply)
-  //     .freezeWith(client);
+  const supplyKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const mintTx = new TokenMintTransaction()
+      .setTokenId(this.tokenId)
+      .setAmount(additionalSupply)
+      .freezeWith(client);
 
-  // // Sign with the Supply Key
-  // const mintTxSigned = await mintTx.sign(supplyKey);
+  const mintTxSigned = await mintTx.sign(supplyKey);
+  const mintSubmit = await mintTxSigned.execute(client);
 
-  // // Execute the Transaction
-  // const mintSubmit = await mintTxSigned.execute(client);
-
-  // // Get the Receipt
-  // const mintReceipt = await mintSubmit.getReceipt(client);
-  // console.log(`✅ Minting additional ${additionalSupply} tokens successfully. Status: ${mintReceipt.status}`);
-
+  const mintReceipt = await mintSubmit.getReceipt(client);
+  console.log(`✅ Minting additional ${additionalSupply} tokens successfully. Status: ${mintReceipt.status}`);
 });
 
 
@@ -144,10 +132,9 @@ When(/^I create a fixed supply token named Test Token \(HTT\) with (\d+) tokens$
   const TokenId:any = tokenCreateRx.tokenId;
   this.tokenId = TokenId.toString() //'0.0.5633266';
   tokenId =  TokenId.toString() //'0.0.5633266'     //TokenId;
-  console.log(`- FIxded supply token created successfully: line 145 ${this.tokenId} \n`);
+  console.log(`- FIxded supply token created successfully: line 135 ${this.tokenId} \n`);
 });
 Then(/^The total supply of the token is (\d+)$/, async function (totalSupply) {
-  console.log('totalsuppy------ line 148 ', totalSupply)
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!);
   const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
   client.setOperator(treasuryId, treasuryKey);
@@ -156,11 +143,6 @@ Then(/^The total supply of the token is (\d+)$/, async function (totalSupply) {
      .setTokenId(tokenId)
      .execute(client)
      assert.strictEqual(totalSupply*100, Number(tokenInfo.totalSupply.toString()))
-     console.log("🔹 Token Name:", tokenInfo.name);
-     console.log("🔹 Token Symbol:", tokenInfo.symbol);
-    //  console.log("🔹 Token Total Supply:", tokenInfo.totalSupply.toString());
-    //  console.log("🔹 Token Decimals:", tokenInfo.decimals);
-    //  console.log("🔹 Freeze Status:", tokenInfo.freezeKey ? "Yes" : "No");
 });
 Then(/^An attempt to mint tokens fails$/, async function () {
   console.log(`Minting aditional supply for token ${this.tokenId}...`);
@@ -173,14 +155,10 @@ Then(/^An attempt to mint tokens fails$/, async function () {
   // Sign with the Supply Key
   try{
     const mintTxSigned = await mintTx.sign(supplyKey);
-  
-    // Execute the Transaction
     const mintSubmit = await mintTxSigned.execute(client);
-  
-    // Get the Receipt
     const mintReceipt = await mintSubmit.getReceipt(client);
   }catch(errr:any){
-    console.log(`Minting additional tokens supply fail. Status: ${errr.status}`);
+    console.log(`Minting additional tokens supply fail as expected. Status: ${errr.status}`);
     // assert.equal(errr.status, "TOKEN_HAS_NO_SUPPLY_KEY")
   }
 
@@ -189,41 +167,39 @@ Then(/^An attempt to mint tokens fails$/, async function () {
 Given(/^A first hedera account with more than (\d+) hbar$/, async function (expectedBalance) {
   console.log('line 189:  tokenId-------  ', tokenId)
   const account = accounts[0]
-  const MY_ACCOUNT_ID = AccountId.fromString(account.id);
-  this.MY_ACCOUNT_ID = MY_ACCOUNT_ID;
-  const MY_PRIVATE_KEY: PrivateKey = PrivateKey.fromStringECDSA(account.privateKey);
-  this.MY_PRIVATE_KEY = MY_PRIVATE_KEY;
-  client.setOperator(MY_ACCOUNT_ID, MY_PRIVATE_KEY);
+  const account1Id = AccountId.fromString(account.id);
+  this.account1Id = account1Id;
+  const account1Key: PrivateKey = PrivateKey.fromStringECDSA(account.privateKey);
+  this.account1Key = account1Key;
+  client.setOperator(account1Id, account1Key);
 
   //Create the query request
-  const query = new AccountBalanceQuery().setAccountId(MY_ACCOUNT_ID);
+  const query = new AccountBalanceQuery().setAccountId(account1Id);
   const balance = await query.execute(client)
   assert.ok(balance.hbars.toBigNumber().toNumber() > expectedBalance)
-  console.log('token supply---is more htan 10 hbar line 197')
+  console.log('token supply---is more htan 10 hbar line 180')
 });
 Given(/^A second Hedera account$/, async function () {
   console.log('tokenId------- 200 ', tokenId)
 
   const account = accounts[1]
-  const MY_ACCOUNT_ID_2 = AccountId.fromString(account.id);
-  this.MY_ACCOUNT_ID_2 = MY_ACCOUNT_ID_2;
-  const MY_PRIVATE_KEY_2: PrivateKey = PrivateKey.fromStringECDSA(account.privateKey);
-  this.MY_PRIVATE_KEY_2 = MY_PRIVATE_KEY_2;
+  const account2Id = AccountId.fromString(account.id);
+  // this.MY_ACCOUNT_ID_2 = MY_ACCOUNT_ID_2;
+  const account2Key: PrivateKey = PrivateKey.fromStringECDSA(account.privateKey);
+  // this.MY_PRIVATE_KEY_2 = MY_PRIVATE_KEY_2;
 });
 Given(/^A token named Test Token \(HTT\) with (\d+) tokens$/, async function (totalSupply) {
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!); 
   const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
   client.setOperator(treasuryId, treasuryKey);
-  console.log('totalsuppy------216 ', totalSupply, tokenId.toString())
   const tokenID = TokenId.fromString(tokenId.toString());
   const tokenInfo = await new TokenInfoQuery()
      .setTokenId(tokenID)
-     .execute(client)
-  console.log('tokenInfo--------221 ', tokenInfo.totalSupply.toString())   
+     .execute(client) 
      assert.strictEqual(totalSupply*100, Number(tokenInfo.totalSupply.toString()))
 });
 Given(/^The first account holds (\d+) HTT tokens$/, async function (balance:number) {
-  console.log('tokenId-------line 224 ', tokenId.toString())
+  console.log('tokenId-------line 202 ', tokenId.toString())
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!); 
   const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
   // const tokenSupply = 1000; // Fixed supply
@@ -231,7 +207,7 @@ Given(/^The first account holds (\d+) HTT tokens$/, async function (balance:numb
   const account1Id = AccountId.fromString(account.id); 
   const account1Key = PrivateKey.fromStringED25519(account.privateKey);
   client.setOperator(account1Id, account1Key);
-  client.setRequestTimeout(30000);
+  // client.setRequestTimeout(30000);
   // token assoication with account1
   try{
     const associateTx = await new TokenAssociateTransaction()
@@ -244,14 +220,14 @@ Given(/^The first account holds (\d+) HTT tokens$/, async function (balance:numb
     const associateAccount1Rx = await associateSubmit.getReceipt(client);
     console.log(`token association with Account1 ${associateAccount1Rx.status}`);
   }catch(err:any){
-      console.log("errr line 246 ", err.status)
-      // console.log(`token ${tokenId} already associated with account1 `)  
+      // console.log("errr line 246 ", err.status)
+      console.log(`line 233: token ${tokenId} already associated with account1 `)  
       // return  
   }
 
   console.log(`start trasfering 100 HTT token to Account1 ${account1Id}`)
   client.setOperator(treasuryId, treasuryKey);
-  client.setRequestTimeout(30000);
+  // client.setRequestTimeout(30000);
   const transferTx = await new TransferTransaction()
   .addTokenTransfer(tokenId, treasuryId, -100) // Deduct from treasury
   .addTokenTransfer(tokenId, account1Id, 100)  // Credit to account1
@@ -289,7 +265,8 @@ Given(/^The second account holds (\d+) HTT tokens$/, async function (balance:num
     const ascAcc2Rx = await ascSubmit.getReceipt(client);
     console.log(`token association with Account2 ${ascAcc2Rx.status}`);
   }catch(err:any){
-      console.log("errr line 290 ", err.status)  
+    console.log(`line 227: token ${tokenId} already associated with account2 `)  
+      // console.log("errr line 290 ", err.status)  
   }
 
   console.log(`start trasfering 100 HTT token to Account1 ${account2Id}`)
@@ -311,100 +288,104 @@ Given(/^The second account holds (\d+) HTT tokens$/, async function (balance:num
 
 });
 When(/^The first account creates a transaction to transfer (\d+) HTT tokens to the second account$/, async function (token: number) {
-  // const account1 = accounts[0]
-  // const account1Id = AccountId.fromString(account1.id); 
-  // const account1Key = PrivateKey.fromStringED25519(account1.privateKey);
-  // const account2 = accounts[1]
-  // const account2Id = AccountId.fromString(account2.id); 
-  // client.setOperator(account1Id, account1Key);
-  // const transferTx = await new TransferTransaction()
-  // .addTokenTransfer(tokenId, account1Id, -token) // Deduct from account1
-  // .addTokenTransfer(tokenId, account2Id, token)  // Credit to account2
-  // .freezeWith(client)
-  // .sign(account1Key);
-  // this.transferTx = transferTx;
+  const account1 = accounts[0]
+  const account1Id = AccountId.fromString(account1.id); 
+  const account1Key = PrivateKey.fromStringED25519(account1.privateKey);
+  const account2 = accounts[1]
+  const account2Id = AccountId.fromString(account2.id); 
+  client.setOperator(account1Id, account1Key);
+  const transferTx = await new TransferTransaction()
+  .addTokenTransfer(tokenId, account1Id, -token) // Deduct from account1
+  .addTokenTransfer(tokenId, account2Id, token)  // Credit to account2
+  .freezeWith(client)
+  .sign(account1Key);
+  this.transferTx = transferTx;
 
 });
 When(/^The first account submits the transaction$/, async function () {
-  // const account1 = accounts[0]
-  // const account1Id = AccountId.fromString(account1.id); 
-  // const account1Key = PrivateKey.fromStringED25519(account1.privateKey);
-  // client.setOperator(account1Id, account1Key);
+  const account1 = accounts[0]
+  const account1Id = AccountId.fromString(account1.id); 
+  const account1Key = PrivateKey.fromStringED25519(account1.privateKey);
+  client.setOperator(account1Id, account1Key);
+  // client.setRequestTimeout(3000);
+  try{
+    const transferSubmit = await this.transferTx.execute(client);
+    const transferReceipt = await transferSubmit.getReceipt(client);
+    console.log(`✅ Transfer Successful from account 1 to account 2 line 335! Status: ${transferReceipt.status}`);
+  }catch(err){
+    //  console.log('error while transafering from account1 to account 2 ', err)
+  }
 
-  // const transferSubmit = await this.transferTx.execute(client);
-  // const transferReceipt = await transferSubmit.getReceipt(client);
-
-  // console.log(`✅ Transfer Successful from account 1 to account 2 line 335! Status: ${transferReceipt.status}`);
 
 });
 When(/^The second account creates a transaction to transfer (\d+) HTT tokens to the first account$/, async function (token:number) {
-  // const account1 = accounts[0]
-  // const account1Id = AccountId.fromString(account1.id); 
-  // const account2 = accounts[1]
-  // const account2Id = AccountId.fromString(account2.id); 
-  // const account2Key = PrivateKey.fromStringED25519(account2.privateKey);
-  // const account1Key = PrivateKey.fromStringED25519(account1.privateKey);
+  const account1 = accounts[0]
+  const account1Id = AccountId.fromString(account1.id); 
+  const account2 = accounts[1]
+  const account2Id = AccountId.fromString(account2.id); 
+  const account2Key = PrivateKey.fromStringED25519(account2.privateKey);
+  const account1Key = PrivateKey.fromStringED25519(account1.privateKey);
 
-  // client.setOperator(account1Id, account1Key);  // account 1 fee payer  
-  // const txId = TransactionId.generate(account1Id);
+  client.setOperator(account1Id, account1Key);  // account 1 fee payer  
+  const txId = TransactionId.generate(account1Id);
 
-  // let transferTx = await new TransferTransaction()
-  // .setTransactionId(txId)
-  // .addTokenTransfer(tokenId, account2Id, -token) // Deduct from account2
-  // .addTokenTransfer(tokenId, account1Id, token)  // Credit to account1 
-  // .freezeWith(client)
-  // .sign(account2Key);
-  // transferTx = await transferTx.sign(account1Key); // sign by fee payer
-  // this.transferTx = transferTx;
+  let transferTx = await new TransferTransaction()
+  .setTransactionId(txId)
+  .addTokenTransfer(tokenId, account2Id, -token) // Deduct from account2
+  .addTokenTransfer(tokenId, account1Id, token)  // Credit to account1 
+  .freezeWith(client)
+  .sign(account2Key);
+  transferTx = await transferTx.sign(account1Key); // sign by fee payer
+  this.transferTx1 = transferTx;
 
 });
 Then(/^The first account has paid for the transaction fee$/, async function () {
-  // const account1 = accounts[0]
-  // const account1Id = AccountId.fromString(account1.id); 
-  // const account1Key = PrivateKey.fromStringED25519(account1.privateKey);
-  // client.setOperator(account1Id, account1Key);
+  const account1 = accounts[0]
+  const account1Id = AccountId.fromString(account1.id); 
+  const account1Key = PrivateKey.fromStringED25519(account1.privateKey);
+  client.setOperator(account1Id, account1Key);
 
-  // const transferSubmit = await this.transferTx.execute(client);
-  // const transferReceipt = await transferSubmit.getReceipt(client);
+  const transferSubmit = await this.transferTx1.execute(client);
+  const transferReceipt = await transferSubmit.getReceipt(client);
 
-  // console.log(`✅ Transfer Successful from 2nd account to 1st account line 362! Status: ${transferReceipt.status}`);
+  console.log(`✅ Transfer Successful from 2nd account to 1st account line 362! Status: ${transferReceipt.status}`);
 
 });
 Given(/^A first hedera account with more than (\d+) hbar and (\d+) HTT tokens$/, async function (bal1:number, bal2:number) {
-  // const acc = accounts[0]
-  // const accountId1: AccountId = AccountId.fromString(acc.id);
-  // this.accountId1 = accountId1
-  // const privKey: PrivateKey = PrivateKey.fromStringED25519(acc.privateKey);
-  // this.privKey = privKey
-  // client.setOperator(this.accountId1, privKey);
+  const acc = accounts[0]
+  const accountId1: AccountId = AccountId.fromString(acc.id);
+  this.accountId1 = accountId1
+  const privKey: PrivateKey = PrivateKey.fromStringED25519(acc.privateKey);
+  this.privKey = privKey
+  client.setOperator(this.accountId1, privKey);
 
-  // //Create the query request
-  // const query = new AccountBalanceQuery().setAccountId(accountId1);
-  // const balance = await query.execute(client)
-  // assert.ok(balance.hbars.toBigNumber().toNumber() > bal1)
+  //Create the query request
+  const query = new AccountBalanceQuery().setAccountId(accountId1);
+  const balance = await query.execute(client)
+  assert.ok(balance.hbars.toBigNumber().toNumber() > bal1)
 
-  // const account2Balance = await new AccountBalanceQuery().setAccountId(accountId1).execute(client);
-  // const bal = account2Balance.tokens?._map.get(tokenId.toString())
-  // console.log('account2Balance------ 387', bal)
-  // assert.ok(bal >= bal2)
+  const account2Balance = await new AccountBalanceQuery().setAccountId(accountId1).execute(client);
+  const bal = account2Balance.tokens?._map.get(tokenId.toString())
+  console.log('account2Balance------ 387', bal)
+  assert.ok(bal >= bal2)
 });
 Given(/^A second Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async function (bal1:number, bal2:number) {
-  // const acc = accounts[1]
-  // const accountId2: AccountId = AccountId.fromString(acc.id);
-  // this.accountId2 = accountId2
-  // const privKey: PrivateKey = PrivateKey.fromStringED25519(acc.privateKey);
-  // this.privKey = privKey
-  // client.setOperator(this.accountId1, privKey);
+  const acc = accounts[1]
+  const accountId2: AccountId = AccountId.fromString(acc.id);
+  this.accountId2 = accountId2
+  const privKey: PrivateKey = PrivateKey.fromStringED25519(acc.privateKey);
+  this.privKey = privKey
+  client.setOperator(this.accountId2, privKey);
 
-  // //Create the query request
-  // const query = new AccountBalanceQuery().setAccountId(accountId2);
-  // const balance = await query.execute(client)
-  // assert.ok(balance.hbars.toBigNumber().toNumber() > bal1)
+  //Create the query request
+  const query = new AccountBalanceQuery().setAccountId(accountId2);
+  const balance = await query.execute(client)
+  assert.ok(balance.hbars.toBigNumber().toNumber() > bal1)
 
-  // const account2Balance = await new AccountBalanceQuery().setAccountId(accountId2).execute(client);
-  // const bal = account2Balance.tokens?._map.get(tokenId.toString())
-  // console.log('account2Balance------ 405', bal)
-  // assert.ok(bal >= bal2)
+  const account2Balance = await new AccountBalanceQuery().setAccountId(accountId2).execute(client);
+  const bal = account2Balance.tokens?._map.get(tokenId.toString())
+  console.log('account2Balance------ 383', bal)
+  assert.ok(bal >= bal2)
 });
 Given(/^A third Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async function (bal1, bal2) {
   const acc = accounts[2]
@@ -437,7 +418,7 @@ Given(/^A third Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fun
   const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
   console.log(`start trasfering 100 HTT token to Account3 ${accountId3}`)
   client.setOperator(treasuryId, treasuryKey);
-  client.setRequestTimeout(30000);
+  // client.setRequestTimeout(30000);
   const transferTx = await new TransferTransaction()
   .addTokenTransfer(tokenId, treasuryId, -100) // Deduct from treasury
   .addTokenTransfer(tokenId, accountId3, 100)  // Credit to account3
@@ -484,7 +465,7 @@ Given(/^A fourth Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fu
   const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
   console.log(`start trasfering 100 HTT token to Account4 ${account4Id}`)
   client.setOperator(treasuryId, treasuryKey);
-  client.setRequestTimeout(30000);
+  // client.setRequestTimeout(30000);
   const transferTx = await new TransferTransaction()
   .addTokenTransfer(tokenId, treasuryId, -100) // Deduct from treasury
   .addTokenTransfer(tokenId, account4Id, 100)  // Credit to account4
@@ -500,8 +481,8 @@ Given(/^A fourth Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fu
   assert.ok(bal >= bal2)
 });
 
-When(/^A transaction is created to transfer (\d+) HTT tokens out of the first and second account and (\d+) HTT tokens into the third account and (\d+) HTT tokens into the fourth account$/, async function (bal1,bal2,bal3,bal4:number) {
-  console.log('--------- ',bal1, bal2, bal3, bal4)
+When(/^A transaction is created to transfer (\d+) HTT tokens out of the first and second account and (\d+) HTT tokens into the third account and (\d+) HTT tokens into the fourth account$/, async function (bal1,bal2,bal3:number) {
+  console.log('--------- ',bal1, bal2, bal3)
   const [account1, account2, account3, account4] = accounts;
   const account1Id: AccountId = AccountId.fromString(account1.id);
   const account2Id: AccountId = AccountId.fromString(account2.id);
@@ -511,7 +492,7 @@ When(/^A transaction is created to transfer (\d+) HTT tokens out of the first an
   const account2Key: PrivateKey = PrivateKey.fromStringED25519(account2.privateKey);
 
   client.setOperator(account1Id, account1Key);
-  client.setRequestTimeout(30000);
+  // client.setRequestTimeout(30000);
 
   // Create Token Transfer Transaction
   let transferTx = await new TransferTransaction()
@@ -539,6 +520,7 @@ Then(/^The third account holds (\d+) HTT tokens$/, async function (bal: number) 
   const account3Balance = await new AccountBalanceQuery().setAccountId(account3Id).execute(client);
   const balance = account3Balance.tokens?._map.get(tokenId.toString())
   console.log('final account 3 token balance ', balance)
+  assert.ok(balance >=bal)
 });
 Then(/^The fourth account holds (\d+) HTT tokens$/, async function (bal:number) {
   const account4  = accounts[3];
@@ -549,4 +531,6 @@ Then(/^The fourth account holds (\d+) HTT tokens$/, async function (bal:number) 
   const account2Balance = await new AccountBalanceQuery().setAccountId(account4Id).execute(client);
   const balance = account2Balance.tokens?._map.get(tokenId.toString())
   console.log('final account 4 token balance ', balance)
+  assert.ok(balance >=bal)
+
 });
