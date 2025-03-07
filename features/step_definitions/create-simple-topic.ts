@@ -29,6 +29,8 @@ Given(/^a first account with more than (\d+) hbars$/, async function (expectedBa
   //Create the query request
   const query = new AccountBalanceQuery().setAccountId(account);
   const balance = await query.execute(client)
+  console.log("line 41: balance---- ", balance.hbars.toBigNumber().toNumber())
+  console.log("line 42: expected balance---- ", expectedBalance)
   assert.ok(balance.hbars.toBigNumber().toNumber() > expectedBalance)
 });
 
@@ -109,6 +111,7 @@ Given(/^A second account with more than (\d+) hbars$/, async function (expectedB
   const query = new AccountBalanceQuery().setAccountId(accountId);
   const balance = await query.execute(client)
   console.log("line 109: balance----: ", balance.hbars.toBigNumber().toNumber())
+  console.log("line 110: expected balance----: ", expectedBalance)
   assert.ok(balance.hbars.toBigNumber().toNumber() > expectedBalance)
 });
 
@@ -119,9 +122,18 @@ Given(/^A (\d+) of (\d+) threshold key with the first and second account$/, asyn
   const privKey2: PrivateKey = PrivateKey.fromStringED25519(acc2.privateKey);
   const thresholdKey = new KeyList([privKey1.publicKey, privKey2.publicKey], 1);
   this.thresholdKey = thresholdKey;
+  // Check current operator's balance before creating account
+  const operatorId = client.operatorAccountId;
+  console.log("Current operator account ID:", operatorId?.toString());
+  
+  if (operatorId) {
+    const balanceQuery = new AccountBalanceQuery().setAccountId(operatorId);
+    const balanceResponse = await balanceQuery.execute(client);
+    console.log("Operator balance before account creation:", balanceResponse.hbars.toString());
+  }
   const accountTx = new AccountCreateTransaction()
     .setKey(thresholdKey)
-    .setInitialBalance(new Hbar(10))// initial balance
+    .setInitialBalance(new Hbar(1))// initial balance
     .execute(client);
   
   const receipt = await (await accountTx).getReceipt(client);

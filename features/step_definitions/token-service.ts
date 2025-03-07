@@ -15,7 +15,7 @@ import assert from "node:assert";
 import * as dotenv from "dotenv";
 
 // Load environment variables from .env file
-dotenv.config();
+dotenv.config({ path: '.env.example' });
 setDefaultTimeout(10 * 1000);
 const client = Client.forTestnet()
 let tokenId : string = '';
@@ -23,7 +23,7 @@ Given(/^A Hedera account with more than (\d+) hbar$/, async function (expectedBa
   const account = accounts[0]
   const MY_ACCOUNT_ID = AccountId.fromString(account.id);
   this.MY_ACCOUNT_ID = MY_ACCOUNT_ID;
-  const MY_PRIVATE_KEY: PrivateKey = PrivateKey.fromStringECDSA(account.privateKey);
+  const MY_PRIVATE_KEY: PrivateKey = PrivateKey.fromStringED25519(account.privateKey);
   this.MY_PRIVATE_KEY = MY_PRIVATE_KEY;
   client.setOperator(MY_ACCOUNT_ID, MY_PRIVATE_KEY);
 
@@ -36,9 +36,9 @@ Given(/^A Hedera account with more than (\d+) hbar$/, async function (expectedBa
 
 When(/^I create a token named Test Token \(HTT\)$/, async function () {
   // Configure accounts and client, and generate needed keys
-  // console.log("load dotenv variables", process.env.MY_ACCOUNT_ID, process.env.MY_PRIVATE_KEY)
+  console.log("load dotenv variables", process.env.MY_ACCOUNT_ID, process.env.MY_PRIVATE_KEY)
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!);
-  const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const treasuryKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   client.setOperator(treasuryId, treasuryKey);
   const tokenCreateTx = new TokenCreateTransaction()
   .setTokenName("Test Token")
@@ -96,7 +96,7 @@ Then(/^The token is owned by the account$/, async function () {
 
 Then(/^An attempt to mint (\d+) additional tokens succeeds$/, async function (additionalSupply) {
   console.log(`Minting ${additionalSupply} tokens for ${this.tokenId}...`);
-  const supplyKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const supplyKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   const mintTx = new TokenMintTransaction()
       .setTokenId(this.tokenId)
       .setAmount(additionalSupply)
@@ -114,7 +114,7 @@ Then(/^An attempt to mint (\d+) additional tokens succeeds$/, async function (ad
 When(/^I create a fixed supply token named Test Token \(HTT\) with (\d+) tokens$/, async function (tokenSupply) {
   console.log("fix tokenSupply------- 125 ", tokenSupply * 100)
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!);
-  const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const treasuryKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   client.setOperator(treasuryId, treasuryKey);
   const tokenCreateTx = new TokenCreateTransaction()
   .setTokenName("Test Token")
@@ -136,7 +136,7 @@ When(/^I create a fixed supply token named Test Token \(HTT\) with (\d+) tokens$
 });
 Then(/^The total supply of the token is (\d+)$/, async function (totalSupply) {
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!);
-  const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const treasuryKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   client.setOperator(treasuryId, treasuryKey);
   const tokenId = TokenId.fromString(this.tokenId);
   const tokenInfo = await new TokenInfoQuery()
@@ -146,7 +146,7 @@ Then(/^The total supply of the token is (\d+)$/, async function (totalSupply) {
 });
 Then(/^An attempt to mint tokens fails$/, async function () {
   console.log(`Minting aditional supply for token ${this.tokenId}...`);
-  const supplyKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const supplyKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   const mintTx = new TokenMintTransaction()
       .setTokenId(this.tokenId)
       .setAmount(1000)
@@ -169,7 +169,7 @@ Given(/^A first hedera account with more than (\d+) hbar$/, async function (expe
   const account = accounts[0]
   const account1Id = AccountId.fromString(account.id);
   this.account1Id = account1Id;
-  const account1Key: PrivateKey = PrivateKey.fromStringECDSA(account.privateKey);
+  const account1Key: PrivateKey = PrivateKey.fromStringED25519(account.privateKey);
   this.account1Key = account1Key;
   client.setOperator(account1Id, account1Key);
 
@@ -185,23 +185,26 @@ Given(/^A second Hedera account$/, async function () {
   const account = accounts[1]
   const account2Id = AccountId.fromString(account.id);
   // this.MY_ACCOUNT_ID_2 = MY_ACCOUNT_ID_2;
-  const account2Key: PrivateKey = PrivateKey.fromStringECDSA(account.privateKey);
+  const account2Key: PrivateKey = PrivateKey.fromStringED25519(account.privateKey);
   // this.MY_PRIVATE_KEY_2 = MY_PRIVATE_KEY_2;
 });
 Given(/^A token named Test Token \(HTT\) with (\d+) tokens$/, async function (totalSupply) {
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!); 
-  const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const treasuryKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   client.setOperator(treasuryId, treasuryKey);
   const tokenID = TokenId.fromString(tokenId.toString());
   const tokenInfo = await new TokenInfoQuery()
      .setTokenId(tokenID)
      .execute(client) 
+
+  console.log('tokenInfo------line 218 ', Number(tokenInfo.totalSupply.toString()))
+  console.log('totalSupply------line 219 ', totalSupply*100)
      assert.strictEqual(totalSupply*100, Number(tokenInfo.totalSupply.toString()))
 });
 Given(/^The first account holds (\d+) HTT tokens$/, async function (balance:number) {
   console.log('tokenId-------line 202 ', tokenId.toString())
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!); 
-  const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const treasuryKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   // const tokenSupply = 1000; // Fixed supply
   const account = accounts[0]
   const account1Id = AccountId.fromString(account.id); 
@@ -220,7 +223,7 @@ Given(/^The first account holds (\d+) HTT tokens$/, async function (balance:numb
     const associateAccount1Rx = await associateSubmit.getReceipt(client);
     console.log(`token association with Account1 ${associateAccount1Rx.status}`);
   }catch(err:any){
-      // console.log("errr line 246 ", err.status)
+      console.log("errr line 246 ", err.status)
       console.log(`line 233: token ${tokenId} already associated with account1 `)  
       // return  
   }
@@ -246,7 +249,7 @@ Given(/^The first account holds (\d+) HTT tokens$/, async function (balance:numb
 Given(/^The second account holds (\d+) HTT tokens$/, async function (balance:number) {
   console.log('tokenId-------line 270 ', tokenId)
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!); 
-  const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const treasuryKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   // const tokenSupply = 1000; // Fixed supply
   const account = accounts[1]
   const account2Id = AccountId.fromString(account.id); 
@@ -415,7 +418,7 @@ Given(/^A third Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fun
       console.log("errr line 436 ", err.status)  
   }
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!); 
-  const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const treasuryKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   console.log(`start trasfering 100 HTT token to Account3 ${accountId3}`)
   client.setOperator(treasuryId, treasuryKey);
   // client.setRequestTimeout(30000);
@@ -462,7 +465,7 @@ Given(/^A fourth Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fu
       console.log("errr line 481 ", err.status)  
   }
   const treasuryId = AccountId.fromString(process.env.MY_ACCOUNT_ID!); 
-  const treasuryKey = PrivateKey.fromStringECDSA(process.env.MY_PRIVATE_KEY!);
+  const treasuryKey = PrivateKey.fromStringED25519(process.env.MY_PRIVATE_KEY!);
   console.log(`start trasfering 100 HTT token to Account4 ${account4Id}`)
   client.setOperator(treasuryId, treasuryKey);
   // client.setRequestTimeout(30000);
